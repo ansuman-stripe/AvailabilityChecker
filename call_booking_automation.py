@@ -1,5 +1,6 @@
 # Importing required packages
 import datetime
+import calendar
 import os
 import time
 from autohubble import hubble_query_to_df, PRESTO
@@ -31,7 +32,7 @@ df_sql_data = hubble_query_to_df(sql_data, PRESTO)
 print(df_sql_data)
 
 # Dataframe to store slot counts
-results_df = pd.DataFrame(columns=['Region', 'Country', 'Email', 'SlotAvailable', 'CheckedAt'])
+results_df = pd.DataFrame(columns=['Region', 'Country', 'Email', 'SlotCount', 'CheckedAt'])
 
 ################################################################################################ 
 #Selenium function
@@ -40,7 +41,7 @@ results_df = pd.DataFrame(columns=['Region', 'Country', 'Email', 'SlotAvailable'
 service = Service()
 driver = webdriver.Chrome(service=service)
 
-def check_slots_for_region(region, email, country):    
+def check_slots_for_region(driver,region, email, country):    
     try:
         driver.get("https://stripe.com/in/contact/sales")
         time.sleep(3) # wait to open
@@ -87,29 +88,68 @@ def check_slots_for_region(region, email, country):
         submit_button = driver.find_element(By.XPATH, "//button[@data-test-id='csf-contact-information-submit-button']")
         submit_button.click()
         
-        time.sleep(60) # wait to open
+        print("Waiting for calendar page to load...")
+        time.sleep(20)  # Wait for page to load
+        print("Wait time completed")
+
+         # Method 1: Look for buttons with current date in title
+        now = datetime.datetime.now()
+        day_of_week = calendar.day_name[now.weekday()]  # e.g., "Thursday"
+        month_name = calendar.month_name[now.month]     # e.g., "July"
+        day_number = now.day                            # e.g., 24
+
+        print(f"Looking for buttons with date pattern: {day_of_week}, {month_name} {day_number}")
+        date_pattern = f"{day_of_week}, {month_name} {day_number}"
+
+        iframe_leandatabookit = driver.find_element(By.ID, "LeanDataBookitFrame")
+        print("Found LeanDataBookitFrame by ID")
+        driver.switch_to.frame(iframe_leandatabookit)
+
+        iframe_bookit = driver.find_element(By.CLASS_NAME, "bookit-frame")
+        print("Found bookit-frame by ID")
+        driver.switch_to.frame(iframe_bookit)
+
+        confirm_buttons = driver.find_elements(By.XPATH, "//button[contains(@class, 'timeslot-button')]/div[contains(@class, 'confirm-button-div')]/button[contains(@class, 'confirm-button')]")
+        print(f"Found {len(confirm_buttons)} confirm buttons")
+
+        if len(confirm_buttons) > 0:
+            slot_count = len(confirm_buttons)
         
+        time.sleep(2)  # Wait for page to load
+        
+        return slot_count        
+        
+    except Exception as e:
+        print(f"Error in form submission or checking time slots: {str(e)}")
+        return 0
 
-    finally:
-        driver.quit()
-
-# Process each region in the dataframe
-for index, row in df_sql_data.iterrows():
-    region = row['region']
-    email = row['email']
-    country = row['country']
+try:
+    # Process each region in the dataframe
+    for index, row in df_sql_data.iterrows():
+        region = row['region']
+        email = row['email']
+        country = row['country']
+        
+        print(f"Checking slots for {region}, {country}...")
+        slot_count = check_slots_for_region(driver, region, email, country)
+        
+        # Add results to the dataframe
+        results_df = pd.concat([results_df, pd.DataFrame([{
+            'Region': region,
+            'Country': country,
+            'Email': email,
+            'SlotCount': slot_count,
+            'CheckedAt': datetime.datetime.now()
+        }])], ignore_index=True)
+        
+        # Add a small delay between requests to prevent getting blocked
+        time.sleep(2)
     
-    print(f"Checking slots for {region}, {country}...")
-    slot_available = check_slots_for_region(region, email, country)
-    
-    # Add results to the dataframe
-    results_df = pd.concat([results_df, pd.DataFrame([{
-        'Region': region,
-        'Country': country,
-        'Email': email,
-        'SlotAvailable': "Yes" if slot_available else "No",
-        'CheckedAt': datetime.datetime.now()
-    }])], ignore_index=True)
-    
-    # Add a small delay between requests to prevent getting blocked
-    time.sleep(2)
+    script_directory = os.path.dirname(__file__)
+    result_csv_path = os.path.join(script_directory, 'result_data.csv')
+    results_df.to_csv(result_csv_path, index=False)
+    print(f"\nResults saved to {result_csv_path}")
+        
+finally:
+    # Only close the browser after all checks are done
+    driver.quit()
