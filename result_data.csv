@@ -1,3 +1,18 @@
-Region,Country,Email,"Thursday, August 7","Friday, August 8","Monday, August 11","Tuesday, August 12","Wednesday, August 13","Thursday, August 14","Friday, August 15"
-EMEA Dach Vendor,Germany,CALL_BOOKING-SMALL_BUSINESS-100@stripe.com,18.0,22.0,25.0,25.0,25.0,25.0,20.0
-EMEA France (All Segments) - Alice Thuau,France,CALL_BOOKING-ENTERPRISE@stripe.com,0.0,0.0,0.0,1.0,8.0,15.0,21.0
+Region,Country,Email,"Friday, August 8","Saturday, August 9","Monday, August 11","Tuesday, August 12","Wednesday, August 13","Thursday, August 14","Friday, August 15","Saturday, August 16","Monday, August 18","Tuesday, August 19"
+EMEA Dach Vendor,Germany,CALL_BOOKING-SMALL_BUSINESS-100@stripe.com,14.0,0.0,24.0,25.0,25.0,25.0,20.0,0.0,25.0,0.0
+AMER (SD segments),United States,CALL_BOOKING-ENTERPRISE@stripe.com,2.0,14.0,10.0,12.0,24.0,27.0,16.0,14.0,0.0,0.0
+EMEA France (All Segments) - Alice Thuau,France,CALL_BOOKING-ENTERPRISE@stripe.com,1.0,0.0,0.0,0.0,0.0,12.0,10.0,0.0,18.0,0.0
+"APAC SG (Digital Native, Enterprise, Strategic)",Singapore,CALL_BOOKING-ENTERPRISE@stripe.com,0.0,0.0,1.0,0.0,4.0,1.0,15.0,0.0,3.0,0.0
+EMEA Iberia (All Segments) - Oana Bucur,Spain,CALL_BOOKING-ENTERPRISE@stripe.com,0.0,0.0,8.0,5.0,1.0,20.0,2.0,0.0,16.0,0.0
+EMEA Italy Vendor,Italy,CALL_BOOKING-SMALL_BUSINESS-100@stripe.com,13.0,0.0,22.0,22.0,21.0,22.0,20.0,0.0,17.0,0.0
+EMEA UK/IE (Startup + Commercial T2) - Robbert Fanning,United Kingdom,CALL_BOOKING-STARTUP-100@stripe.com,1.0,0.0,0.0,0.0,0.0,12.0,10.0,0.0,18.0,0.0
+APAC AUNZ (Enterprise),Australia,CALL_BOOKING-ENTERPRISE@stripe.com,4.0,0.0,20.0,4.0,5.0,9.0,19.0,0.0,20.0,3.0
+AMER (Vendors),United States,CALL_BOOKING-SMALL_BUSINESS-100@stripe.com,11.0,4.0,11.0,15.0,15.0,15.0,15.0,4.0,0.0,0.0
+LATAM BR + MX SD (All Segments),Brazil,CALL_BOOKING-ENTERPRISE@stripe.com,0.0,0.0,2.0,0.0,0.0,0.0,1.0,2.0,7.0,0.0
+EMEA NORD Vendor,Denmark,CALL_BOOKING-SMALL_BUSINESS-100@stripe.com,13.0,0.0,20.0,22.0,22.0,20.0,19.0,0.0,22.0,0.0
+EMEA BLN (All segments ex PLT) + [UAE + NORD + IL + CEE] (All Segments) - Killian,United Arab Emirates,CALL_BOOKING-ENTERPRISE@stripe.com,1.0,0.0,0.0,0.0,0.0,12.0,10.0,0.0,18.0,0.0
+LATAM MX Vendor,Mexico,CALL_BOOKING-SMALL_BUSINESS-100@stripe.com,0.0,9.0,11.0,20.0,24.0,24.0,18.0,13.0,11.0,0.0
+EMEA DACH (Platform) - Maxim Reitter,Germany,CALL_BOOKING-SAAS_PLATFORM@stripe.com,1.0,0.0,0.0,0.0,0.0,12.0,10.0,0.0,18.0,0.0
+EMEA UKIE Vendor,United Kingdom,CALL_BOOKING-SMALL_BUSINESS-100@stripe.com,13.0,0.0,25.0,26.0,25.0,24.0,21.0,0.0,25.0,0.0
+EMEA UK/IE (Other Segments) - Adam Hoyne,United Kingdom,CALL_BOOKING-ENTERPRISE@stripe.com,1.0,0.0,0.0,0.0,0.0,12.0,10.0,0.0,18.0,0.0
+

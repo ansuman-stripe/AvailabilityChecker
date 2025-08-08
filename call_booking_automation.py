@@ -18,19 +18,34 @@ from selenium.webdriver.common.action_chains import ActionChains
 ################################################################################################ 
 # Hubble query to call booking data
 
-sql_data = '''
-    with cte as (
-        select row_number() over (partition by region, email, country order by created desc) as row_num,
-		    active,region, email, country, created    
-	    from usertables.ansuman_call_booking_automation
-    )select region, email, country 
-    from cte where row_num = 1 and active = true
-    LIMIT 2
-        '''
+# sql_data = '''
+#     with cte as (
+#         select row_number() over (partition by region, email, country order by created desc) as row_num,
+# 		    active,region, email, country, created    
+# 	    from usertables.ansuman_call_booking_automation
+#     )select region, email, country 
+#     from cte where row_num = 1 and active = true
+#     limit 1
+#         '''
 
-# df_sql_data = hubble_query_to_df(sql_data, PRESTO, force_refresh=True)
-df_sql_data = hubble_query_to_df(sql_data, PRESTO)
-print(df_sql_data)
+# # df_sql_data = hubble_query_to_df(sql_data, PRESTO, force_refresh=True)
+# df_sql_data = hubble_query_to_df(sql_data, PRESTO)
+# print(df_sql_data)
+
+script_directory = os.path.dirname(__file__)
+latest_file_path = os.path.join(script_directory, "test_case.csv")
+
+data = pd.read_csv(latest_file_path, header=0, encoding='ISO-8859-1') # Read the test_case file
+column_data = data[["region","email","country"]] # Validate column names and extract data
+
+# Ensure no duplicates in the mapping
+original_count = len(column_data)
+column_data = column_data.drop_duplicates()
+if original_count > len(column_data):
+    print(f"Removed {original_count - len(column_data)} duplicate entries from the file")
+
+print(f"Loaded {len(column_data)} test cases from {latest_file_path}") # Final data loaded
+df_sql_data = column_data
 
 # Dataframe to store slot counts
 results_df = pd.DataFrame(columns=['Region', 'Country', 'Email', 'Day', 'Date', 'SlotCount', 'CheckedAt'])
@@ -100,7 +115,7 @@ def check_slots_for_region(driver,region, email, country):
         submit_button.click()
         
         print("Waiting for calendar page to load...")
-        time.sleep(20)  # Wait for page to load
+        time.sleep(15)  # Wait for page to load
         print("Wait time completed")
 
         iframe_leandatabookit = driver.find_element(By.ID, "LeanDataBookitFrame")
@@ -167,7 +182,7 @@ def check_slots_for_region(driver,region, email, country):
                 print(f"Clicking on day {day_num} - {day_title}")
                 try:
                     day_button.click()
-                    time.sleep(3)  # Wait for slots to update
+                    time.sleep(0.5)  # Wait for slots to update
                 except Exception as e:
                     print(f"Error clicking on day {day_num}: {str(e)}")
                     days_processed += 1
@@ -199,7 +214,7 @@ def check_slots_for_region(driver,region, email, country):
                 print(f"Error counting slots for day {day_num}: {str(e)}")
                 
             days_processed += 1
-            time.sleep(3)  # Add delay between day clicks
+            time.sleep(0.5)  # Add delay between day clicks
         
         print(f"Completed processing {days_processed} days")
         
@@ -300,7 +315,6 @@ try:
     # Select only the desired columns
     results_df = results_df[final_columns]
     
-    script_directory = os.path.dirname(__file__)
     result_csv_path = os.path.join(script_directory, 'result_data.csv')
     results_df.to_csv(result_csv_path, index=False)
     print(f"\nResults saved to {result_csv_path}")
