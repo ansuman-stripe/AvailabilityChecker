@@ -262,7 +262,7 @@ try:
             }
             results_df = pd.concat([results_df, pd.DataFrame([row_data])], ignore_index=True)
         
-        time.sleep(1)  # small delay between requests to prevent getting blocked
+        time.sleep(2)  # small delay between requests to prevent getting blocked
     
     # Fill NaN values with 0 (for dates that don't have data for some regions)
     results_df = results_df.fillna(0)
