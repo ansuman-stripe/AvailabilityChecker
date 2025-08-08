@@ -18,18 +18,34 @@ from selenium.webdriver.common.action_chains import ActionChains
 ################################################################################################ 
 # Hubble query to call booking data
 
-sql_data = '''
-    with cte as (
-        select row_number() over (partition by region, email, country order by created desc) as row_num,
-		    active,region, email, country, created    
-	    from usertables.ansuman_call_booking_automation
-    )select region, email, country 
-    from cte where row_num = 1 and active = true
-    '''
+# sql_data = '''
+#     with cte as (
+#         select row_number() over (partition by region, email, country order by created desc) as row_num,
+# 		    active,region, email, country, created    
+# 	    from usertables.ansuman_call_booking_automation
+#     )select region, email, country 
+#     from cte where row_num = 1 and active = true
+#     limit 1
+#         '''
 
-# df_sql_data = hubble_query_to_df(sql_data, PRESTO, force_refresh=True)
-df_sql_data = hubble_query_to_df(sql_data, PRESTO)
-print(df_sql_data)
+# # df_sql_data = hubble_query_to_df(sql_data, PRESTO, force_refresh=True)
+# df_sql_data = hubble_query_to_df(sql_data, PRESTO)
+# print(df_sql_data)
+
+script_directory = os.path.dirname(__file__)
+latest_file_path = os.path.join(script_directory, "test_case.csv")
+
+data = pd.read_csv(latest_file_path, header=0, encoding='ISO-8859-1') # Read the test_case file
+column_data = data[["region","email","country"]] # Validate column names and extract data
+
+# Ensure no duplicates in the mapping
+original_count = len(column_data)
+column_data = column_data.drop_duplicates()
+if original_count > len(column_data):
+    print(f"Removed {original_count - len(column_data)} duplicate entries from the file")
+
+print(f"Loaded {len(column_data)} test cases from {latest_file_path}") # Final data loaded
+df_sql_data = column_data
 
 # Dataframe to store slot counts
 results_df = pd.DataFrame(columns=['Region', 'Country', 'Email', 'Day', 'Date', 'SlotCount', 'CheckedAt'])
@@ -99,7 +115,7 @@ def check_slots_for_region(driver,region, email, country):
         submit_button.click()
         
         print("Waiting for calendar page to load...")
-        time.sleep(20)  # Wait for page to load
+        time.sleep(15)  # Wait for page to load
         print("Wait time completed")
 
         iframe_leandatabookit = driver.find_element(By.ID, "LeanDataBookitFrame")
@@ -166,7 +182,7 @@ def check_slots_for_region(driver,region, email, country):
                 print(f"Clicking on day {day_num} - {day_title}")
                 try:
                     day_button.click()
-                    time.sleep(3)  # Wait for slots to update
+                    time.sleep(0.5)  # Wait for slots to update
                 except Exception as e:
                     print(f"Error clicking on day {day_num}: {str(e)}")
                     days_processed += 1
@@ -198,7 +214,7 @@ def check_slots_for_region(driver,region, email, country):
                 print(f"Error counting slots for day {day_num}: {str(e)}")
                 
             days_processed += 1
-            time.sleep(3)  # Add delay between day clicks
+            time.sleep(0.5)  # Add delay between day clicks
         
         print(f"Completed processing {days_processed} days")
         
@@ -216,24 +232,93 @@ try:
         region = row['region']
         email = row['email']
         country = row['country']
-        
+
         print(f"Checking slots for {region}, {country}...")
         slot_count = check_slots_for_region(driver, region, email, country)
         
-        # Add results to the dataframe - need to change the format
-        results_df = pd.concat([results_df, pd.DataFrame([{
-            'Region': region,
-            'Country': country,
-            'Email': email,
-            'SlotCount': slot_count,
-            'CheckedAt': datetime.datetime.now()
-        }])], ignore_index=True)
+        # Add results to the dataframe in the new format
+        if slot_count:  # Check if slot_count has data
+            # Create a base row with region, country, email
+            row_data = {
+                'Region': region,
+                'Country': country,
+                'Email': email
+            }
+            
+            # Add each date as a column with its slot count
+            for day_data in slot_count:
+                date_key = day_data['Date']  # Use the date as column name
+                row_data[date_key] = day_data['SlotCount']
+            
+            # Add the row to results dataframe
+            results_df = pd.concat([results_df, pd.DataFrame([row_data])], ignore_index=True)
+            
+        else:
+            # If no slots found, add with basic info only
+            row_data = {
+                'Region': region,
+                'Country': country,
+                'Email': email
+            }
+            results_df = pd.concat([results_df, pd.DataFrame([row_data])], ignore_index=True)
         
-        time.sleep(2) # small delay between requests to prevent getting blocked
+        time.sleep(1)  # small delay between requests to prevent getting blocked
     
-    script_directory = os.path.dirname(__file__)
+    # Fill NaN values with 0 (for dates that don't have data for some regions)
+    results_df = results_df.fillna(0)
+    
+    # Define base columns that should appear first
+    base_columns = ['Region', 'Country', 'Email']
+    
+    # Identify date columns (exclude unwanted columns)
+    unwanted_columns = ['CheckedAt', 'Date', 'Day', 'SlotCount', 'Day_Title', 'No_Data']
+    date_columns = [col for col in results_df.columns if col not in base_columns and col not in unwanted_columns]
+    
+    # Sort date columns in ascending chronological order
+    if date_columns:
+        try:
+            # Parse dates and sort them chronologically
+            date_columns_with_parsed = []
+            for date_col in date_columns:
+                try:
+                    # Extract date from formats like "Friday, August 15" or "2024-01-15"
+                    # Try to parse the date string
+                    parsed_date = pd.to_datetime(date_col, errors='coerce')
+                    if pd.isna(parsed_date):
+                        # Try alternative parsing for "Day, Month DD" format
+                        import re
+                        # Extract month and day from strings like "Friday, August 15"
+                        match = re.search(r'(\w+),\s*(\w+)\s+(\d+)', date_col)
+                        if match:
+                            month_day = f"{match.group(2)} {match.group(3)}"
+                            parsed_date = pd.to_datetime(f"2024 {month_day}", errors='coerce')
+                    
+                    if pd.notna(parsed_date):
+                        date_columns_with_parsed.append((parsed_date, date_col))
+                    else:
+                        # If all parsing fails, use current date as fallback for sorting
+                        date_columns_with_parsed.append((pd.Timestamp.now(), date_col))
+                except:
+                    date_columns_with_parsed.append((pd.Timestamp.now(), date_col))
+            
+            # Sort by parsed date and extract column names
+            date_columns_with_parsed.sort(key=lambda x: x[0])
+            date_columns = [col[1] for col in date_columns_with_parsed]
+            
+        except Exception as e:
+            print(f"Date sorting failed: {e}, using alphabetical sort")
+            date_columns.sort()
+    
+    # Create final column order: base columns + sorted date columns only
+    final_columns = base_columns + date_columns
+    
+    # Select only the desired columns
+    results_df = results_df[final_columns]
+    
     result_csv_path = os.path.join(script_directory, 'result_data.csv')
     results_df.to_csv(result_csv_path, index=False)
     print(f"\nResults saved to {result_csv_path}")
-        
-finally: driver.quit()
+    print("Columns in final output:", results_df.columns.tolist())
+    
+finally: 
+    driver.quit()
