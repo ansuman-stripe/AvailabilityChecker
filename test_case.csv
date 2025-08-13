@@ -1,0 +1,17 @@
+region,email,country
+EMEA Dach Vendor,CALL_BOOKING-SMALL_BUSINESS-100@stripe.com,Germany
+AMER (SD segments),CALL_BOOKING-ENTERPRISE@stripe.com,United States
+EMEA France (All Segments) - Alice Thuau,CALL_BOOKING-ENTERPRISE@stripe.com,France
+"APAC SG (Digital Native, Enterprise, Strategic)",CALL_BOOKING-ENTERPRISE@stripe.com,Singapore
+EMEA Iberia (All Segments) - Oana Bucur,CALL_BOOKING-ENTERPRISE@stripe.com,Spain
+EMEA Italy Vendor,CALL_BOOKING-SMALL_BUSINESS-100@stripe.com,Italy
+EMEA UK/IE (Startup + Commercial T2) - Robbert Fanning,CALL_BOOKING-STARTUP-100@stripe.com,United Kingdom
+APAC AUNZ (Enterprise),CALL_BOOKING-ENTERPRISE@stripe.com,Australia
+AMER (Vendors),CALL_BOOKING-SMALL_BUSINESS-100@stripe.com,United States
+LATAM BR + MX SD (All Segments),CALL_BOOKING-ENTERPRISE@stripe.com,Brazil
+EMEA NORD Vendor,CALL_BOOKING-SMALL_BUSINESS-100@stripe.com,Denmark
+EMEA BLN (All segments ex PLT) + [UAE + NORD + IL + CEE] (All Segments) - Killian,CALL_BOOKING-ENTERPRISE@stripe.com,United Arab Emirates
+LATAM MX Vendor,CALL_BOOKING-SMALL_BUSINESS-100@stripe.com,Mexico
+EMEA DACH (Platform) - Maxim Reitter,CALL_BOOKING-SAAS_PLATFORM@stripe.com,Germany
+EMEA UKIE Vendor,CALL_BOOKING-SMALL_BUSINESS-100@stripe.com,United Kingdom
+EMEA UK/IE (Other Segments) - Adam Hoyne,CALL_BOOKING-ENTERPRISE@stripe.com,United Kingdom
