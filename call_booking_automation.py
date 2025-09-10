@@ -269,7 +269,7 @@ def check_slots_for_region(driver, region, email, country):
                 print(f"Error processing day: {e}")
         
         # If we need more days and haven't processed all 8 days yet, check next month
-        if len(processed_dates) < 8:
+        if len(processed_dates) < 11:
             try:
                 print("Need more days, trying to navigate to next month...")
                 
