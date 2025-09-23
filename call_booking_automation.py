@@ -14,8 +14,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 
+# Configuration Constants
+DAYS_TO_CHECK = 11  # Number of days to check for slot availability
+
 ################################################################################################
-# Function 1: Load Data (test cases and previous results)
+# Function 1: Load Data (test cases)
 def load_data():
     print("\n=== FUNCTION: LOADING DATA ===")
     script_directory = os.path.dirname(__file__)
@@ -33,19 +36,7 @@ def load_data():
     
     print(f"Loaded {len(column_data)} test cases from {latest_file_path}")
     
-    # Load previous results if available
-    result_csv_path = os.path.join(script_directory, "result_data.csv")
-    previous_results = None
-    if os.path.exists(result_csv_path):
-        try:
-            previous_results = pd.read_csv(result_csv_path)
-            print(f"Loaded previous results from {result_csv_path} for delta comparison")
-        except Exception as e:
-            print(f"Error loading previous results: {e}")
-    else:
-        print("No previous results found. This will be the baseline run.")
-    
-    return column_data, previous_results, result_csv_path
+    return column_data
 
 ################################################################################################
 # Function 2: Check Slots for Region
@@ -78,7 +69,7 @@ def check_slots_for_region(driver, region, email, country):
             revenue_form = WebDriverWait(driver, 3).until(
                 EC.presence_of_element_located((By.XPATH, "//div[@data-js-controller='Revenue']"))
             )
-            print("Revenue form detected, analyzing available options...")
+            print("Revenue form detected, selecting second last option...")
             
             # Wait for the form to fully render
             time.sleep(2)
@@ -93,38 +84,19 @@ def check_slots_for_region(driver, region, email, country):
                 
                 print(f"Found {len(option_labels)} revenue options in the visible container")
                 
-                # Print all options for debugging
-                for idx, label in enumerate(option_labels):
-                    try:
-                        text_element = label.find_element(By.XPATH, ".//div[contains(@class, 'ContactSalesButtonRadioOption__text')]")
-                        text = text_element.text.strip()
-                        print(f"Option {idx+1}: Text='{text}'")
-                    except:
-                        print(f"Option {idx+1}: Unable to read text")
-                
                 if len(option_labels) >= 2:
                     # Select the second to last option
                     target_index = len(option_labels) - 2
                     target_label = option_labels[target_index]
                     
-                    try:
-                        target_text = target_label.find_element(By.XPATH, ".//div[contains(@class, 'ContactSalesButtonRadioOption__text')]").text.strip()
-                        print(f"Selecting option {target_index+1}: '{target_text}'")
-                    except:
-                        print(f"Selecting option {target_index+1}")
-                    
-                    # Click the label directly (this worked in the previous attempt)
-                    try:
-                        target_label.click()
-                        print("Successfully clicked the option label")
-                    except Exception as e:
-                        print(f"Failed to click option label: {e}")
+                    # Click the label directly
+                    target_label.click()
+                    print("Successfully clicked the option label")
                     
                     # Wait for the option to be selected and for any UI changes
                     time.sleep(2)
                     
                     # Look for a continue button that might appear after selection
-                    # The continue button may have appeared or become enabled after selection
                     continue_button_xpath = "//div[@data-js-controller='Revenue']//button[contains(text(), 'Continue') or contains(@class, 'continueButton')]"
                     
                     try:
@@ -132,12 +104,10 @@ def check_slots_for_region(driver, region, email, country):
                         continue_button = WebDriverWait(driver, 3).until(
                             EC.element_to_be_clickable((By.XPATH, continue_button_xpath))
                         )
-                        print("Continue button found and is clickable")
                         continue_button.click()
                         print("Clicked continue button")
                     except Exception as e:
                         print(f"Continue button not found or not clickable: {e}")
-                        # Just continue with the flow, as the form might auto-advance
                         print("Proceeding to the next form step anyway")
                 else:
                     print(f"Not enough options found, only {len(option_labels)} options")
@@ -189,7 +159,7 @@ def check_slots_for_region(driver, region, email, country):
 
         # Get today's date
         today = datetime.datetime.now().date()
-        target_end_date = today + datetime.timedelta(days=7)  # Next 8 days (including today)
+        target_end_date = today + datetime.timedelta(days=DAYS_TO_CHECK-1)  # Next N days (including today)
         print(f"Looking for slots from {today} to {target_end_date}")
         
         # Function to parse date from day title
@@ -268,10 +238,10 @@ def check_slots_for_region(driver, region, email, country):
             except Exception as e:
                 print(f"Error processing day: {e}")
         
-        # If we need more days and haven't processed all 8 days yet, check next month
-        if len(processed_dates) < 11:
+        # If we need more days and haven't processed all expected days yet, check next month
+        if len(processed_dates) < DAYS_TO_CHECK:
             try:
-                print("Need more days, trying to navigate to next month...")
+                print(f"Need more days ({len(processed_dates)} < {DAYS_TO_CHECK}), trying to navigate to next month...")
                 
                 # Click month selector
                 month_selector = driver.find_element(By.XPATH, "//p-dropdown[@id='month-selector']")
@@ -295,8 +265,8 @@ def check_slots_for_region(driver, region, email, country):
                         print(f"Found {len(day_buttons)} day buttons in next month")
                         
                         for day_btn in day_buttons:
-                            # Stop if we've already processed 8 days
-                            if len(processed_dates) >= 8:
+                            # Stop if we've already processed enough days
+                            if len(processed_dates) >= DAYS_TO_CHECK:
                                 break
                                 
                             try:
@@ -342,7 +312,6 @@ def check_slots_for_region(driver, region, email, country):
     except Exception as e:
         print(f"Error in form submission or checking time slots: {str(e)}")
         return []
-
 # Function 3: Process and format results (continued)
 def process_results(slot_data_list, df_sql_data):
     print("\n=== FUNCTION: PROCESSING RESULTS ===")
@@ -397,7 +366,7 @@ def process_results(slot_data_list, df_sql_data):
     base_columns = ['Region', 'Country', 'Email']
     
     # Identify date columns (exclude unwanted columns)
-    unwanted_columns = ['CheckedAt', 'Date', 'Day', 'SlotCount', 'Day_Title', 'No_Data']
+    unwanted_columns = ['CheckedAt', 'Day', 'SlotCount', 'Day_Title', 'No_Data']
     date_columns = [col for col in results_df.columns if col not in base_columns and col not in unwanted_columns]
     
     # Sort date columns in ascending chronological order
@@ -407,25 +376,33 @@ def process_results(slot_data_list, df_sql_data):
             date_columns_with_parsed = []
             for date_col in date_columns:
                 try:
-                    # Extract date from formats like "Friday, August 15" or "2024-01-15"
-                    parsed_date = pd.to_datetime(date_col, errors='coerce')
-                    if pd.isna(parsed_date):
-                        # Try alternative parsing for "Day, Month DD" format
-                        import re
-                        # Extract month and day from strings like "Friday, August 15"
-                        match = re.search(r'(\w+),\s*(\w+)\s+(\d+)', date_col)
-                        if match:
-                            month_day = f"{match.group(2)} {match.group(3)}"
-                            parsed_date = pd.to_datetime(f"2024 {month_day}", errors='coerce')
-                    
-                    if pd.notna(parsed_date):
+                    # Try alternative parsing for "Day, Month DD" format
+                    import re
+                    # Extract month and day from strings like "Friday, August 15"
+                    match = re.search(r'(\w+),\s*(\w+)\s+(\d+)', date_col)
+                    if match:
+                        month = match.group(2)
+                        day = int(match.group(3))
+                        
+                        month_num = {
+                            'January': 1, 'February': 2, 'March': 3, 'April': 4, 
+                            'May': 5, 'June': 6, 'July': 7, 'August': 8, 
+                            'September': 9, 'October': 10, 'November': 11, 'December': 12
+                        }.get(month)
+                        
+                        year = datetime.datetime.now().year
+                        # Adjust year if month is earlier than current month
+                        if month_num < datetime.datetime.now().month:
+                            year += 1
+                        
+                        parsed_date = datetime.date(year, month_num, day)
                         date_columns_with_parsed.append((parsed_date, date_col))
                     else:
-                        # If all parsing fails, use current date as fallback for sorting
-                        date_columns_with_parsed.append((pd.Timestamp.now(), date_col))
+                        # If parsing fails, use current date as fallback for sorting
+                        date_columns_with_parsed.append((datetime.datetime.now().date(), date_col))
                 except Exception as e:
                     print(f"Error parsing date {date_col}: {str(e)}")
-                    date_columns_with_parsed.append((pd.Timestamp.now(), date_col))
+                    date_columns_with_parsed.append((datetime.datetime.now().date(), date_col))
             
             # Sort by parsed date and extract column names
             date_columns_with_parsed.sort(key=lambda x: x[0])
@@ -442,143 +419,27 @@ def process_results(slot_data_list, df_sql_data):
     results_df = results_df[final_columns]
     
     print(f"Processed results with {len(results_df)} regions and {len(date_columns)} dates")
-    return results_df, date_columns
+    return results_df
 
 ################################################################################################
-# Function 4: Compare data and calculate deltas
-def calculate_deltas(current_results, previous_results, date_columns):
-    print("\n=== FUNCTION: CALCULATING DELTAS ===")
-    
-    if previous_results is None or previous_results.empty:
-        print("No valid previous results to compare with. Skipping delta calculation.")
-        return None
-    
-    try:
-        # Create a copy of current results for delta calculations
-        delta_df = current_results.copy()
-        
-        # Collect all date columns from both current and previous results
-        all_date_columns = set(date_columns)
-        
-        # Add date columns from previous results that might not be in current results
-        prev_date_cols = [col for col in previous_results.columns 
-                          if col not in ['Region', 'Country', 'Email'] 
-                          and not col.endswith('(Δ)')]
-        all_date_columns.update(prev_date_cols)
-        
-        # Sort date columns (similar to the process in process_results function)
-        try:
-            # Parse dates and sort them chronologically
-            date_columns_with_parsed = []
-            for date_col in all_date_columns:
-                try:
-                    # Extract date from formats like "Friday, August 15" or "2024-01-15"
-                    parsed_date = pd.to_datetime(date_col, errors='coerce')
-                    if pd.isna(parsed_date):
-                        # Try alternative parsing for "Day, Month DD" format
-                        import re
-                        # Extract month and day from strings like "Friday, August 15"
-                        match = re.search(r'(\w+),\s*(\w+)\s+(\d+)', date_col)
-                        if match:
-                            month_day = f"{match.group(2)} {match.group(3)}"
-                            parsed_date = pd.to_datetime(f"2024 {month_day}", errors='coerce')
-                    
-                    if pd.notna(parsed_date):
-                        date_columns_with_parsed.append((parsed_date, date_col))
-                    else:
-                        # If all parsing fails, use current date as fallback for sorting
-                        date_columns_with_parsed.append((pd.Timestamp.now(), date_col))
-                except Exception as e:
-                    print(f"Error parsing date {date_col}: {str(e)}")
-                    date_columns_with_parsed.append((pd.Timestamp.now(), date_col))
-            
-            # Sort by parsed date and extract column names
-            date_columns_with_parsed.sort(key=lambda x: x[0])
-            sorted_date_columns = [col[1] for col in date_columns_with_parsed]
-            
-        except Exception as e:
-            print(f"Date sorting failed: {e}, using alphabetical sort")
-            sorted_date_columns = sorted(list(all_date_columns))
-        
-        # Add missing date columns to delta_df with zeros
-        for date_col in sorted_date_columns:
-            if date_col not in delta_df.columns:
-                delta_df[date_col] = 0
-                print(f"Added missing date column '{date_col}' with zeros")
-                
-        # For each date column, calculate and add a delta column
-        delta_columns_added = 0
-        
-        # Create a final list of columns for ordering
-        final_columns = ['Region', 'Country', 'Email']
-        
-        for date_col in sorted_date_columns:
-            # Add the current value column to final columns
-            if date_col in delta_df.columns:
-                final_columns.append(date_col)
-            
-            # Create delta column name
-            delta_col = f"{date_col} (Δ)"
-            
-            # Calculate delta values
-            delta_values = []
-            
-            for _, curr_row in delta_df.iterrows():
-                key = (curr_row['Region'], curr_row['Country'], curr_row['Email'])
-                curr_val = float(curr_row.get(date_col, 0))
-                
-                # Find matching row in previous results
-                prev_val = 0  # Default if not found
-                for _, prev_row in previous_results.iterrows():
-                    if (prev_row['Region'], prev_row['Country'], prev_row['Email']) == key:
-                        prev_val = float(prev_row.get(date_col, 0))
-                        break
-                
-                delta = curr_val - prev_val
-                delta_values.append(delta)
-            
-            # Add delta column to dataframe
-            delta_df[delta_col] = delta_values
-            final_columns.append(delta_col)
-            delta_columns_added += 1
-            
-        # Reorder columns to ensure values and deltas are paired
-        delta_df = delta_df[final_columns]
-        
-        print(f"Added {delta_columns_added} delta columns including for dates not in current results")
-        return delta_df
-        
-    except Exception as e:
-        print(f"Error calculating deltas: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
-
-################################################################################################
-# Function 5: Save output files
-def save_output(results_df, delta_df=None, result_csv_path=None):
+# Function 4: Save output file
+def save_output(results_df):
     print("\n=== FUNCTION: SAVING OUTPUT ===")
     script_directory = os.path.dirname(__file__)
     
-    if result_csv_path is None:
-        result_csv_path = os.path.join(script_directory, "result_data.csv")
+    result_csv_path = os.path.join(script_directory, "result_data.csv")
     
     # Save current results
     results_df.to_csv(result_csv_path, index=False)
     print(f"Results saved to {result_csv_path}")
-    
-    # Save delta comparison if available
-    if delta_df is not None:
-        delta_csv_path = os.path.join(script_directory, "result_data_with_delta.csv")
-        delta_df.to_csv(delta_csv_path, index=False)
-        print(f"Delta comparison saved to {delta_csv_path}")
 
 ################################################################################################
 # Main function
 print("\n=== STARTING SLOT CHECKING AUTOMATION ===")
+print(f"Will check availability for the next {DAYS_TO_CHECK} days")
 
 # Load data
-df_sql_data, previous_results, result_csv_path = load_data()
+df_sql_data = load_data()
 
 # Date information
 now = datetime.datetime.now()
@@ -630,13 +491,10 @@ try:
             continue
     
     # Process the results
-    results_df, date_columns = process_results(all_slot_data, df_sql_data)
+    results_df = process_results(all_slot_data, df_sql_data)
     
-    # Calculate deltas if previous results exist
-    delta_df = calculate_deltas(results_df, previous_results, date_columns)
-    
-    # Save output files
-    save_output(results_df, delta_df, result_csv_path)
+    # Save output file
+    save_output(results_df)
     
     # Generate and print summary report
     print("\n=== AUTOMATION SUMMARY ===")
